@@ -607,14 +607,24 @@ wheels = [
 [[package]]
 name = "pyrct2"
 version = "0.9.3"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../pyrct2" }
 dependencies = [
     { name = "click" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/28/a5d06873bc33e88a13e7fc2dcaa470183b336e5152e7143e51d7175542e8/pyrct2-0.9.3.tar.gz", hash = "sha256:4f1bbc13b745238cce881833f104c28dc360831427643bb63ec687e253b09e72", size = 187317, upload-time = "2026-04-11T10:56:19.234Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/a6/2afc72087958ee8741c08b5ddf867748ab95b53ee970e27c2f013809e300/pyrct2-0.9.3-py3-none-any.whl", hash = "sha256:d981acd4c19afc12c9782ef8483bbcdc5bcd567d5c2832c8e27a72c315290438", size = 97028, upload-time = "2026-04-11T10:56:17.841Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "jupyter", specifier = ">=1.0" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.9" },
 ]
 
 [[package]]
@@ -634,7 +644,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.0" },
     { name = "langchain-openai", specifier = ">=1.1.12" },
     { name = "langgraph", specifier = ">=1.1.6" },
-    { name = "pyrct2", specifier = ">=0.9.3" },
+    { name = "pyrct2", editable = "../pyrct2" },
     { name = "python-dotenv", specifier = ">=1.0" },
 ]
 

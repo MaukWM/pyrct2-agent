@@ -137,4 +137,42 @@ def make_ride_tools(game):
             )
         return f"{len(rides)} rides:\n" + "\n".join(lines)
 
+    @tool
+    def check_ride_connectivity(ride_id: int, target_x: int | None = None, target_y: int | None = None) -> str:
+        """Check if a ride/stall entrance and exit are connected to paths.
+
+        Without target: checks if paths exist adjacent to entrance/exit.
+        With target (x,y): checks full path connectivity to that tile (e.g. park gate).
+        """
+        ride = game.rides.get(ride_id)
+        if not ride:
+            return f"Ride {ride_id} not found"
+        if (target_x is None) != (target_y is None):
+            return "ERROR: provide both target_x and target_y, or neither"
+        target = Tile(target_x, target_y) if target_x is not None else None
+
+        if ride.entrance is not None:
+            entrance_ok = ride.is_entrance_reachable(target)
+            exit_ok = ride.is_exit_reachable(target)
+            parts = []
+            parts.append(f"entrance: {'connected' if entrance_ok else 'NOT connected'}")
+            parts.append(f"exit: {'connected' if exit_ok else 'NOT connected'}")
+            return f"{ride.data.name}: {', '.join(parts)}"
+        else:
+            ok = ride.is_reachable(target)
+            return f"{ride.data.name}: {'reachable' if ok else 'NOT reachable (not facing a path)'}"
+
+    @tool
+    def demolish_ride(ride_id: int) -> str:
+        """Demolish a ride or stall, removing it from the map."""
+        ride = game.rides.get(ride_id)
+        if not ride:
+            return f"Ride {ride_id} not found"
+        name = ride.data.name
+        try:
+            ride.demolish()
+            return f"Demolished {name}"
+        except ActionError as e:
+            return f"FAILED: {e}"
+
     return [v for v in locals().values() if isinstance(v, BaseTool)]

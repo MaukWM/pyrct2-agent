@@ -14,7 +14,7 @@ from pyrct2_agent.tools import make_tools
 
 def play(
     scenario=Scenario.TEST_PARK,
-    model="gpt-5-mini",
+    model="gpt-5.4",
     base_url=None,
     api_key=None,
     headless=False,
@@ -23,9 +23,15 @@ def play(
 ):
     game = RCT2.launch(scenario, headless=headless)
     game.park.cheats.build_in_pause_mode()
+    game.park.open()
 
     tools = make_tools(game)
-    llm = ChatOpenAI(model=model, **({"base_url": base_url} if base_url else {}), **({"api_key": api_key} if api_key else {}))
+    llm = ChatOpenAI(
+        model=model,
+        model_kwargs={"parallel_tool_calls": False},
+        **({"base_url": base_url} if base_url else {}),
+        **({"api_key": api_key} if api_key else {}),
+    )
     agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
 
     for turn in range(turns):
@@ -43,10 +49,11 @@ def play(
                             for tc in msg.tool_calls:
                                 print(f"  -> {tc['name']}({tc['args']})")
                         if msg.content:
-                            print(f"  Agent: {msg.content[:300]}")
+                            print(f"  Agent: {msg.content}")
                     elif msg.type == "tool":
                         print(f"  <- {msg.name}: {msg.content[:150]}")
 
+        input("\n  [Press Enter for next turn]")
         game.advance_ticks(ticks_per_turn)
 
     print(f"\nGame over. Final rating: {game.park.rating}")

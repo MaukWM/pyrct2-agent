@@ -26,4 +26,13 @@ def make_path_tools(game):
         except ActionError as e:
             return f"FAILED: {e}"
 
+    @tool
+    def remove_path(x: int, y: int) -> str:
+        """Remove a footpath or queue tile at (x, y)."""
+        try:
+            game.paths.remove(Tile(x, y))
+            return f"Removed path at ({x},{y})"
+        except ActionError as e:
+            return f"FAILED: {e}"
+
     return [v for v in locals().values() if isinstance(v, BaseTool)]
