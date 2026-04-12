@@ -24,6 +24,7 @@ def play(
     game = RCT2.launch(scenario, headless=headless)
     game.park.cheats.build_in_pause_mode()
     game.park.open()
+    game.actions.game_set_speed(speed=4)  # FASTEST — ticks fly between turns
 
     tools = make_tools(game)
     llm = ChatOpenAI(
