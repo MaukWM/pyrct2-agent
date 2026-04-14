@@ -12,6 +12,18 @@ call. Time passes whether you act or not — guests arrive, rides operate, \
 money flows. Plan efficiently: unnecessary tool calls and slow decisions \
 both waste game time.
 
+## Grid directions
+
+The map is a grid of tiles. Directions map to tile coordinate changes:
+- **North**: Y decreases (up on the grid)
+- **South**: Y increases (down on the grid)
+- **West**: X decreases (left on the grid)
+- **East**: X increases (right on the grid)
+
+Example: a stall at (20, 30) facing south means guests approach from \
+tile (20, 31) — one step south (Y+1). If the path is at (20, 29) \
+instead, the stall must face north.
+
 ## Key rules
 
 - The park entrance (G on the map) is where guests enter. It must be \
@@ -23,8 +35,10 @@ For example: ride at (30,24) with entrance at (30,26) — the entrance \
 faces south (away from the ride), so place the queue at (30,27).
 - Every ride exit must connect to a regular footpath on the tile it faces.
 - Stalls (F on the map) don't need queues — just place them adjacent to \
-a regular footpath. The stall's direction must face the path (e.g. if the \
-path is south of the stall, set direction to "south").
+a regular footpath. The stall's direction must face the path it touches. \
+If the path is south of the stall (Y+1), set direction to "south". If \
+the path is north (Y-1), set direction to "north". Getting this wrong \
+means guests can't reach the stall.
 - Paths must form a connected network from the park gate to all rides and \
 stalls. Disconnected paths mean lost guests.
 

@@ -53,7 +53,7 @@ def play(
         d = p.date
         print(
             f"\n=== Turn {turn} | Month {d.month} Year {d.year}"
-            f" | ${p.finance.cash:,} | Rating {p.rating} | Guests {p.guests} ==="
+            f" | ${p.finance.cash:,} | Rating {p.rating} | Guests {p.guests.count()} ==="
         )
 
         # Start first tick advance — runs while LLM generates first action
@@ -108,7 +108,7 @@ def play(
         d = p.date
         print(
             f"\n  --- Paused | Month {d.month} Year {d.year}"
-            f" | ${p.finance.cash:,} | Rating {p.rating} | Guests {p.guests} ---"
+            f" | ${p.finance.cash:,} | Rating {p.rating} | Guests {p.guests.count()} ---"
         )
         input("  [Press Enter for fresh context + another 200 actions]")
 
