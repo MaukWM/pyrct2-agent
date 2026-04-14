@@ -15,8 +15,10 @@ def make_observe_tools(game):
 
     @tool
     def show_map(
-        x1: int | None = None, y1: int | None = None,
-        x2: int | None = None, y2: int | None = None,
+        x1: int | None = None,
+        y1: int | None = None,
+        x2: int | None = None,
+        y2: int | None = None,
     ) -> str:
         """Show ASCII grid of the map. No args = full map. With args = region from (x1,y1) to (x2,y2).
 

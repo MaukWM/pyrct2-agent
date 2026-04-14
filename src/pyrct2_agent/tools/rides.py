@@ -12,11 +12,21 @@ _EXCLUDED_CATEGORIES = {"rollercoaster", "transport", "water"}
 
 # Name → RideObjectInfo lookup, excluding unsupported categories
 _ALL_RIDES: dict[str, RideObjectInfo] = {
-    obj.name: obj for obj in RideObjects.all()
-    if not (set(obj.category) & _EXCLUDED_CATEGORIES if isinstance(obj.category, list) else obj.category in _EXCLUDED_CATEGORIES)
+    obj.name: obj
+    for obj in RideObjects.all()
+    if not (
+        set(obj.category) & _EXCLUDED_CATEGORIES
+        if isinstance(obj.category, list)
+        else obj.category in _EXCLUDED_CATEGORIES
+    )
 }
 
-_DIRECTIONS = {"north": Direction.NORTH, "south": Direction.SOUTH, "east": Direction.EAST, "west": Direction.WEST}
+_DIRECTIONS = {
+    "north": Direction.NORTH,
+    "south": Direction.SOUTH,
+    "east": Direction.EAST,
+    "west": Direction.WEST,
+}
 
 
 def make_ride_tools(game):
@@ -42,7 +52,11 @@ def make_ride_tools(game):
         obj = _ALL_RIDES.get(name)
         if not obj:
             close = [n for n in _ALL_RIDES if name.lower() in n.lower()]
-            return f"Unknown ride '{name}'. Did you mean: {', '.join(close[:5])}" if close else f"Unknown ride '{name}'"
+            return (
+                f"Unknown ride '{name}'. Did you mean: {', '.join(close[:5])}"
+                if close
+                else f"Unknown ride '{name}'"
+            )
         size = f"{obj.tiles_x}x{obj.tiles_y}" if obj.tiles_x else "1x1"
         loaded = game.objects.is_loaded(obj)
         return (
@@ -56,9 +70,12 @@ def make_ride_tools(game):
     @tool
     def place_ride(
         name: str,
-        x: int, y: int,
-        entrance_x: int, entrance_y: int,
-        exit_x: int, exit_y: int,
+        x: int,
+        y: int,
+        entrance_x: int,
+        entrance_y: int,
+        exit_x: int,
+        exit_y: int,
         direction: str = "north",
     ) -> str:
         """Place a flat ride. Entrance/exit must be adjacent to the footprint, not inside it.
@@ -90,7 +107,8 @@ def make_ride_tools(game):
     @tool
     def place_stall(
         name: str,
-        x: int, y: int,
+        x: int,
+        y: int,
         direction: str = "north",
     ) -> str:
         """Place a stall (food, drink, shop, etc.). Stalls are 1x1, no entrance/exit needed.

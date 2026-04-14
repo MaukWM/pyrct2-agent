@@ -6,6 +6,12 @@ in the park as possible by Year 2.
 
 You can see the park as an ASCII grid and interact through tools.
 
+## Time
+The game runs live while you think and advances 200 ticks after each tool \
+call. Time passes whether you act or not — guests arrive, rides operate, \
+money flows. Plan efficiently: unnecessary tool calls and slow decisions \
+both waste game time.
+
 ## Key rules
 
 - The park entrance (G on the map) is where guests enter. It must be \
