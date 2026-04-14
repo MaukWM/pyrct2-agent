@@ -138,29 +138,27 @@ def make_ride_tools(game):
         return f"{len(rides)} rides:\n" + "\n".join(lines)
 
     @tool
-    def check_ride_connectivity(ride_id: int, target_x: int | None = None, target_y: int | None = None) -> str:
-        """Check if a ride/stall entrance and exit are connected to paths.
+    def check_ride_connectivity(ride_id: int) -> str:
+        """Check if a ride/stall is reachable from the park entrance.
 
-        Without target: checks if paths exist adjacent to entrance/exit.
-        With target (x,y): checks full path connectivity to that tile (e.g. park gate).
+        For rides: checks entrance and exit separately.
+        For stalls: checks if the stall faces a connected path.
         """
         ride = game.rides.get(ride_id)
         if not ride:
             return f"Ride {ride_id} not found"
-        if (target_x is None) != (target_y is None):
-            return "ERROR: provide both target_x and target_y, or neither"
-        target = Tile(target_x, target_y) if target_x is not None else None
 
         if ride.entrance is not None:
-            entrance_ok = ride.is_entrance_reachable(target)
-            exit_ok = ride.is_exit_reachable(target)
-            parts = []
-            parts.append(f"entrance: {'connected' if entrance_ok else 'NOT connected'}")
-            parts.append(f"exit: {'connected' if exit_ok else 'NOT connected'}")
-            return f"{ride.data.name}: {', '.join(parts)}"
+            entrance_ok = ride.is_entrance_reachable()
+            exit_ok = ride.is_exit_reachable()
+            return (
+                f"{ride.data.name}: "
+                f"entrance {'OK' if entrance_ok else 'NOT reachable'}, "
+                f"exit {'OK' if exit_ok else 'NOT reachable'}"
+            )
         else:
-            ok = ride.is_reachable(target)
-            return f"{ride.data.name}: {'reachable' if ok else 'NOT reachable (not facing a path)'}"
+            ok = ride.is_stall_reachable()
+            return f"{ride.data.name}: {'OK' if ok else 'NOT reachable'}"
 
     @tool
     def demolish_ride(ride_id: int) -> str:
