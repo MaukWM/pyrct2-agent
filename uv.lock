@@ -606,7 +606,7 @@ wheels = [
 
 [[package]]
 name = "pyrct2"
-version = "0.9.3"
+version = "0.9.4"
 source = { editable = "../pyrct2" }
 dependencies = [
     { name = "click" },
