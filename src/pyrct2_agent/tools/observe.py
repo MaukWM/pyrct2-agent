@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from langchain_core.tools import BaseTool, tool
 
@@ -63,6 +63,8 @@ def make_tools(game: RCT2) -> list[BaseTool]:
             return render_map_area(game, 0, 0, b.x, b.y)
         if any(c is None for c in coords):
             return "ERROR: provide all of x1, y1, x2, y2 or none for full map"
-        return render_map_area(game, x1, y1, x2 - x1 + 1, y2 - y1 + 1)
+        # All are guaranteed non-None after the check above.
+        x1_, y1_, x2_, y2_ = cast(int, x1), cast(int, y1), cast(int, x2), cast(int, y2)
+        return render_map_area(game, x1_, y1_, x2_ - x1_ + 1, y2_ - y1_ + 1)
 
     return [v for v in locals().values() if isinstance(v, BaseTool)]

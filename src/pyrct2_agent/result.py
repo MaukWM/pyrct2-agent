@@ -18,7 +18,7 @@ class RunResult:
     """Basic outcome of an agent run. Will grow with score curves,
     action logs, and cost tracking in later phases."""
 
-    outcome: Outcome
+    outcome: Outcome | None
     total_actions: int = 0
     total_ticks: int = 0
     wall_time_seconds: float = 0.0
