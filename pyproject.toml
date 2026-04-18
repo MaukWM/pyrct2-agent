@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "pyrct2>=0.9.3",
+    "pyrct2>=0.9.6",
     "langgraph>=1.1.6",
     "langchain>=1.0",
     "langchain-openai>=1.1.12",
