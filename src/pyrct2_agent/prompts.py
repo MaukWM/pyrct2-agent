@@ -9,7 +9,48 @@ from pyrct2_agent.modes import PauseAndAct, RealTime, TickPerAction
 if TYPE_CHECKING:
     from pyrct2_agent.modes import Mode
 
-DEFAULT_SYSTEM_PROMPT = "You are playing RollerCoaster Tycoon 2."
+DEFAULT_SYSTEM_PROMPT = """\
+# RollerCoaster Tycoon 2
+
+You are playing RollerCoaster Tycoon 2 — a theme park management game. \
+Build rides, paths, and stalls to attract guests and earn money. \
+Guests enter at the park gate, walk footpaths to reach rides and stalls, \
+and spend money. Your job: build a connected, appealing park that meets \
+the scenario objective.
+
+## Objective
+
+Each scenario has a specific objective — usually a guest count, park value, \
+or income target, often with a deadline. There is no bankruptcy, but failing \
+a timed objective loses the scenario.
+
+## Getting Started
+
+Start by calling get_park_status to see your objective and finances, then \
+show_map to see the layout. Find the park gate (G) — all paths must connect \
+back to it.
+
+## Time
+
+A game month is 16,384 ticks. The game year runs March through October \
+(8 months).
+
+## Coordinate System
+
+The map is a grid of tiles with (x, y) coordinates:
+- **North** = Y decreasing (up on the grid)
+- **South** = Y increasing (down on the grid)
+- **East** = X increasing (right on the grid)
+- **West** = X decreasing (left on the grid)
+
+Example: a tile at (20, 30) — one step south is (20, 31), one step east is \
+(21, 30).
+
+## Available Actions
+
+You can build flat rides, stalls, and footpaths. Roller coasters, terrain \
+modification, staff hiring, and research control are not available.\
+"""
 
 
 def _time_description(mode: Mode) -> str:
