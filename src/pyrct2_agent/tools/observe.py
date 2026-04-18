@@ -21,21 +21,26 @@ def make_tools(game: RCT2) -> list[BaseTool]:
         d = p.date
         bounds = game.world.get_bounds()
         entrances = [
-            {"tiles": [(t.x, t.y) for t in e.tiles], "arrival_tile": (e.arrival_tile.x, e.arrival_tile.y)}
+            {
+                "tiles": [(t.x, t.y) for t in e.tiles],
+                "arrival_tile": (e.arrival_tile.x, e.arrival_tile.y),
+            }
             for e in p.entrances
         ]
-        return json.dumps({
-            "name": p.name,
-            "month": d.month,
-            "year": d.year,
-            "cash": p.finance.cash,
-            "park_value": p.value,
-            "rating": p.rating,
-            "guests": p.guests.count(),
-            "objective": p.objective.model_dump(),
-            "map_size": {"x": bounds.x, "y": bounds.y},
-            "park_entrances": entrances,
-        })
+        return json.dumps(
+            {
+                "name": p.name,
+                "month": d.month,
+                "year": d.year,
+                "cash": p.finance.cash,
+                "park_value": p.value,
+                "rating": p.rating,
+                "guests": p.guests.count(),
+                "objective": p.objective.model_dump(),
+                "map_size": {"x": bounds.x, "y": bounds.y},
+                "park_entrances": entrances,
+            }
+        )
 
     @tool
     def show_map(

@@ -22,7 +22,8 @@ class TestTickPerAction:
         mode = TickPerAction(ticks_per_action=ticks_per_action)
         # Each round: AI with N tool calls, followed by N tool results
         turns = [
-            [ai(tool_calls=tool_calls_per_round)] + [tool() for _ in range(tool_calls_per_round)]
+            [ai(tool_calls=tool_calls_per_round)]
+            + [tool() for _ in range(tool_calls_per_round)]
             for _ in range(rounds)
         ]
         with patch_stream(turns):

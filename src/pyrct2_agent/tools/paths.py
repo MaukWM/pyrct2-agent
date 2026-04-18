@@ -30,7 +30,9 @@ def make_tools(game: RCT2) -> list[BaseTool]:
             start, end = Tile(x1, y1), Tile(x2, y2)
             r = game.paths.place_line(start, end, queue=queue)
             kind = "Queue" if queue else "Path"
-            parts = [f"{kind} line: {r.succeeded} placed, {r.failed} failed, cost=${r.total_cost}"]
+            parts = [
+                f"{kind} line: {r.succeeded} placed, {r.failed} failed, cost=${r.total_cost}"
+            ]
             # Build matching tile list to report failure locations
             if x1 == x2:
                 step = 1 if y2 >= y1 else -1

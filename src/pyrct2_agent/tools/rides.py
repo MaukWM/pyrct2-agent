@@ -141,7 +141,9 @@ def make_tools(game: RCT2) -> list[BaseTool]:
         # We invert so the LLM can think "face toward the path".
         d_internal = Direction((d + 2) % 4)
         try:
-            stall = game.rides.place_stall(obj=obj, tile=Tile(x, y), direction=d_internal)
+            stall = game.rides.place_stall(
+                obj=obj, tile=Tile(x, y), direction=d_internal
+            )
             stall.open()
             dx, dy = _DIR_DELTA[direction.lower()]
             access = (x + dx, y + dy)
@@ -165,20 +167,34 @@ def make_tools(game: RCT2) -> list[BaseTool]:
             return f"FAILED: {e}"
 
     _RIDE_FIELDS = {
-        "id", "name", "classification", "status", "price",
-        "excitement", "intensity", "nausea",
-        "totalCustomers", "totalProfit", "runningCost",
-        "satisfaction", "age", "downtime", "value", "breakdown",
+        "id",
+        "name",
+        "classification",
+        "status",
+        "price",
+        "excitement",
+        "intensity",
+        "nausea",
+        "totalCustomers",
+        "totalProfit",
+        "runningCost",
+        "satisfaction",
+        "age",
+        "downtime",
+        "value",
+        "breakdown",
     }
 
     @tool
     def get_rides() -> str:
         """List all rides and stalls currently in the park with stats."""
         rides = game.state.rides()
-        return json.dumps([
-            {k: v for k, v in r.model_dump().items() if k in _RIDE_FIELDS}
-            for r in rides
-        ])
+        return json.dumps(
+            [
+                {k: v for k, v in r.model_dump().items() if k in _RIDE_FIELDS}
+                for r in rides
+            ]
+        )
 
     @tool
     def check_ride_connectivity(ride_id: int) -> str:
