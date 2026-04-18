@@ -48,6 +48,18 @@ The map is a grid of tiles with (x, y) coordinates:
 Example: a tile at (20, 30) — one step south is (20, 31), one step east is \
 (21, 30).
 
+## Guests & Revenue
+
+Guests arrive at the park gate. More come when park rating is high and the \
+park has many rides. Overpricing the entrance fee reduces arrivals.
+
+Guests get hungry, thirsty, and nauseous over time. Build food and drink \
+stalls along your paths to keep them happy. Park rating is affected by: \
+guest happiness, number of guests, ride excitement and variety, litter on \
+paths, ride breakdowns, and lost guests.
+
+Revenue comes from ride admission fees and stall sales.
+
 ## Available Actions
 
 You can build flat rides, stalls, and footpaths. Roller coasters, terrain \
