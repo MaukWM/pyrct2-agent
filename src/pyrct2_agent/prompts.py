@@ -77,12 +77,23 @@ network. Always branch queues off to the side.
 Build rides first, then build the queue from the entrance toward the \
 nearest regular path.
 
-## Rides
+## Rides & Stalls
 
-Place entrance and exit on tiles adjacent to the ride footprint (not on \
-it). Connect a queue path to the entrance and a regular path to the exit. \
-The placement response tells you exactly which tiles to connect paths \
-to — read it carefully.
+Place ride entrance and exit on tiles adjacent to the ride footprint (not \
+on it). Connect a queue path to the entrance and a regular path to the \
+exit. The placement response tells you exactly which tiles to connect \
+paths to — read it carefully.
+
+Stalls are simpler: 1x1, no entrance or exit. Just set the direction \
+toward the adjacent path and place a regular path on that side.
+
+## Build Workflow
+
+1. Check the map around where you want to build.
+2. Place the ride — read the response for entrance/exit access tiles.
+3. Build a queue path from the entrance access tile to your path network.
+4. Build a regular path from the exit access tile to your path network.
+5. Call check_ride_connectivity to verify — always verify after placing.
 
 ## Available Actions
 
