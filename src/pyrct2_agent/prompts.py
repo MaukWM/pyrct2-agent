@@ -60,6 +60,23 @@ paths, ride breakdowns, and lost guests.
 
 Revenue comes from ride admission fees and stall sales.
 
+## Paths & Queues
+
+Regular footpaths form the backbone of your park — they can branch and \
+intersect freely. All paths must connect back to the park gate.
+
+Queue paths let guests line up for rides. They are limited to 2 connections \
+(they form a line, never a T-junction or crossroad). Place queue paths \
+from a ride entrance toward your regular path network. Where a queue meets \
+a regular path, guests transfer between them normally.
+
+**Critical:** never place a queue on an existing regular path intersection. \
+The game silently drops the tile to 2 connections, severing your path \
+network. Always branch queues off to the side.
+
+Build rides first, then build the queue from the entrance toward the \
+nearest regular path.
+
 ## Available Actions
 
 You can build flat rides, stalls, and footpaths. Roller coasters, terrain \
