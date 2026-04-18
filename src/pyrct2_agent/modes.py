@@ -56,6 +56,7 @@ class TickPerAction:
     ) -> Generator[RoundSnapshot]:
         with ThreadPoolExecutor(max_workers=1) as tick_executor:
             while True:
+                messages.clear()
                 tick_future: Future | None = tick_executor.submit(
                     game.advance_ticks, self.ticks_per_action
                 )
@@ -93,6 +94,7 @@ class PauseAndAct:
         messages: list,
     ) -> Generator[RoundSnapshot]:
         while True:
+            messages.clear()
             action_count = 0
 
             for msg in _stream_actions(agent_executor, messages):
@@ -117,6 +119,7 @@ class RealTime:
         messages: list,
     ) -> Generator[RoundSnapshot]:
         while True:
+            messages.clear()
             game.unpause()
             action_count = 0
 
