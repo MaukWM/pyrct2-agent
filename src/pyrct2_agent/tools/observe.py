@@ -16,9 +16,14 @@ if TYPE_CHECKING:
 def make_tools(game: RCT2) -> list[BaseTool]:
     @tool
     def get_park_status() -> str:
-        """Get current park state: finances, ratings, date, guests, objective."""
+        """Get current park state: finances, ratings, date, guests, objective, map size, and park entrance location."""
         p = game.park
         d = p.date
+        bounds = game.world.get_bounds()
+        entrances = [
+            {"tiles": [(t.x, t.y) for t in e.tiles], "arrival_tile": (e.arrival_tile.x, e.arrival_tile.y)}
+            for e in p.entrances
+        ]
         return json.dumps({
             "name": p.name,
             "month": d.month,
@@ -28,6 +33,8 @@ def make_tools(game: RCT2) -> list[BaseTool]:
             "rating": p.rating,
             "guests": p.guests.count(),
             "objective": p.objective.model_dump(),
+            "map_size": {"x": bounds.x, "y": bounds.y},
+            "park_entrances": entrances,
         })
 
     @tool
@@ -37,7 +44,10 @@ def make_tools(game: RCT2) -> list[BaseTool]:
         x2: int | None = None,
         y2: int | None = None,
     ) -> str:
-        """Show ASCII grid of the map. No args = full map. With args = region from (x1,y1) to (x2,y2).
+        """Show ASCII grid of the map. With args = region from (x1,y1) to (x2,y2). No args = full map.
+
+        Prefer viewing 20-30 tile regions around areas of interest. A full
+        128x128 map produces ~12,000 tokens of output — use regions instead.
 
         Legend: R=Ride/track, E=Entrance, x=Exit, F=Food/drink stall,
         G=Park gate, P=Path, Q=Queue, S=Scenery, .=Owned, ~=Water, _=Unowned

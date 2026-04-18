@@ -26,9 +26,11 @@ a timed objective loses the scenario.
 
 ## Getting Started
 
-Start by calling get_park_status to see your objective and finances, then \
-show_map to see the layout. Find the park gate (G) — all paths must connect \
-back to it.
+Start by calling get_park_status to see your objective, finances, map size, \
+and park entrance location. Then use show_map to view the area around the \
+entrance. You can only build on owned land (. on the map) — not on unowned \
+tiles (_). Maps can be large; use show_map with coordinates to view regions \
+rather than the full map.
 
 ## Time
 
