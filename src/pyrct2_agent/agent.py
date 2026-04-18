@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 import warnings
-from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from langchain.agents import create_agent
@@ -12,7 +11,7 @@ from pyrct2._generated.enums import GameSpeed
 from pyrct2.client import RCT2
 from pyrct2.scenarios import Scenario
 
-from pyrct2_agent.modes import Mode, PauseAndAct, RealTime, TickPerAction
+from pyrct2_agent.modes import Mode, TickPerAction
 from pyrct2_agent.prompts import build_system_prompt
 from pyrct2_agent.result import Outcome, RunResult
 
@@ -117,52 +116,29 @@ class Agent:
         prompt = build_system_prompt(self.mode, self.system_prompt)
         tools: list = []  # Phase 2 — no tools yet
         agent_executor = create_agent(self.llm, tools, system_prompt=prompt)
-
         messages: list = []
+
         start_time = time.monotonic()
         outcome: Outcome | None = None
         total_actions = 0
         total_ticks = 0
-        tick_future: Future | None = None
-        turn = 0
-        mode = self.mode
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            while outcome is None:
-                turn += 1
-                p = game.park
-                d = p.date
-                print(
-                    f"\n=== Turn {turn} | Month {d.month} Year {d.year}"
-                    f" | ${p.finance.cash:,} | Rating {p.rating}"
-                    f" | Guests {p.guests.count()} ==="
-                )
+        for i, snapshot in enumerate(self.mode(game, agent_executor, messages), 1):
+            total_actions += snapshot.actions
+            total_ticks = game.get_status().get("scenarioTicks", total_ticks)
 
-                outcome, actions, tick_future = self._run_turn(
-                    game, agent_executor, executor, messages, mode, tick_future
-                )
-                total_actions += actions
+            print(f"\n--- Snapshot {i} | Guests {game.park.guests.count()} ---")
 
-                # --- Mode-specific: end of turn ---
-                if isinstance(mode, TickPerAction):
-                    if tick_future is not None:
-                        tick_future.result()
-                        tick_future = None
-                elif isinstance(mode, PauseAndAct):
-                    game.advance_ticks(mode.ticks_per_turn)
-                elif isinstance(mode, RealTime):
-                    game.pause()
-
-                total_ticks = game.get_status().get("scenarioTicks", total_ticks)
-
-                # Check end conditions (unless turn already ended it)
-                if outcome is None:
-                    if self.end_on_scenario_complete:
-                        status = game.state.scenario_status()
-                        if status != "inProgress":
-                            outcome = Outcome.SCENARIO_COMPLETE
-                    if self.max_ticks and total_ticks >= self.max_ticks:
-                        outcome = Outcome.MAX_TICKS
+            if self.max_actions and total_actions >= self.max_actions:
+                outcome = Outcome.MAX_ACTIONS
+                break
+            if self.end_on_scenario_complete:
+                if game.state.scenario_status() != "inProgress":
+                    outcome = Outcome.SCENARIO_COMPLETE
+                    break
+            if self.max_ticks and total_ticks >= self.max_ticks:
+                outcome = Outcome.MAX_TICKS
+                break
 
         return RunResult(
             outcome=outcome,
@@ -170,52 +146,3 @@ class Agent:
             total_ticks=total_ticks,
             wall_time_seconds=time.monotonic() - start_time,
         )
-
-    def _run_turn(
-        self,
-        game: RCT2,
-        agent_executor,
-        executor: ThreadPoolExecutor,
-        messages: list,
-        mode: Mode,
-        tick_future: Future | None,
-    ) -> tuple[Outcome | None, int, Future | None]:
-        """Run one turn. Returns (outcome_or_None, actions_this_turn, tick_future)."""
-        # --- Mode-specific: start of turn ---
-        if isinstance(mode, TickPerAction):
-            tick_future = executor.submit(game.advance_ticks, mode.ticks_per_action)
-        elif isinstance(mode, RealTime):
-            game.unpause()
-
-        action_count = 0
-
-        for chunk in agent_executor.stream({"messages": messages}):
-            for node, updates in chunk.items():
-                for msg in updates.get("messages", []):
-                    if msg.type == "ai":
-                        if msg.tool_calls:
-                            if isinstance(mode, TickPerAction) and tick_future is not None:
-                                tick_future.result()
-                                tick_future = None
-                            for tc in msg.tool_calls:
-                                action_count += 1
-                                print(f"  [{action_count}] -> {tc['name']}({tc['args']})")
-                        if msg.content:
-                            print(f"  Agent: {msg.content}")
-                        messages.append(msg)
-
-                    elif msg.type == "tool":
-                        print(f"  <- {msg.name}: {msg.content[:150]}")
-                        messages.append(msg)
-                        if isinstance(mode, TickPerAction):
-                            tick_future = executor.submit(
-                                game.advance_ticks, mode.ticks_per_action
-                            )
-
-            # Check per-action end conditions
-            if self.max_actions and (action_count) >= self.max_actions:
-                return Outcome.MAX_ACTIONS, action_count, tick_future
-            if isinstance(mode, PauseAndAct) and action_count >= mode.actions_per_turn:
-                break
-
-        return None, action_count, tick_future
