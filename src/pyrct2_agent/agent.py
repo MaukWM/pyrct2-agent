@@ -175,7 +175,7 @@ class Agent:
         ):
             if snapshot.action is not None:
                 total_actions += 1
-            total_ticks = game.get_status().get("scenarioTicks", total_ticks)
+            total_ticks = game.get_status()["payload"]["date"]["scenarioTicks"]
 
             print(
                 f"\n--- Step {i} | Actions {total_actions} | Guests {game.park.guests.count()} ---"
