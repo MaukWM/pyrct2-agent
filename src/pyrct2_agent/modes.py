@@ -1,134 +1,225 @@
 """Game loop timing modes.
 
-Each mode is a callable that returns a generator of RoundSnapshots.
-The generator handles mode-specific timing; the caller handles end conditions.
+Each mode is a callable that yields StepSnapshots — one per LLM invocation.
+The LLM makes exactly one tool call per step. Modes control when game ticks
+advance relative to steps.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Generator
-from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 
 from pyrct2.client import RCT2
 
 if TYPE_CHECKING:
-    from langgraph.graph.state import CompiledStateGraph
+    from langchain_core.language_models import BaseChatModel
+    from langchain_core.tools import BaseTool
+
+# Default context budget in estimated tokens.
+DEFAULT_MAX_HISTORY_TOKENS: int = 30_000
+
+# Rough chars-per-token ratio (conservative — overestimates tokens slightly).
+_CHARS_PER_TOKEN: float = 3.5
 
 
 @dataclass
-class RoundSnapshot:
-    """What happened during one round of the game loop."""
+class StepSnapshot:
+    """What happened during one agent step (one LLM call)."""
 
-    actions: int
+    action: str | None = None  # tool name called, or None if LLM didn't act
+    args: dict[str, Any] = field(default_factory=dict)
+    result: str | None = None
 
 
-def _stream_actions(agent_executor: CompiledStateGraph, messages: list) -> Generator:
-    """Yield messages from the LLM stream, appending to history."""
-    for chunk in agent_executor.stream({"messages": messages}):
-        for _node, updates in chunk.items():
-            for msg in updates.get("messages", []):
-                messages.append(msg)
-                if msg.type == "ai":
-                    if msg.content:
-                        print(f"  Agent: {msg.content}")
-                    for tc in msg.tool_calls:
-                        print(f"  -> {tc['name']}({tc['args']})")
-                elif msg.type == "tool":
-                    print(f"  <- {msg.name}: {msg.content}")
-                yield msg
+# ── Token estimation & truncation ───────────────────────────────────
+
+
+def _estimate_message_tokens(msg) -> int:
+    """Estimate token count for a single LangChain message."""
+    chars = len(msg.content or "")
+    for tc in getattr(msg, "tool_calls", []):
+        chars += len(tc["name"]) + len(json.dumps(tc["args"]))
+    return max(1, int(chars / _CHARS_PER_TOKEN))
+
+
+def _truncate_messages(messages: list, max_tokens: int) -> None:
+    """Drop oldest messages until history fits within *max_tokens*.
+
+    Mutates in-place.  Always keeps at least the last message.
+    """
+    if max_tokens <= 0:
+        messages.clear()
+        return
+
+    # Walk from newest to oldest, accumulating token cost.
+    budget = max_tokens
+    keep_count = 0
+    for msg in reversed(messages):
+        cost = _estimate_message_tokens(msg)
+        if budget - cost < 0 and keep_count > 0:
+            break
+        budget -= cost
+        keep_count += 1
+
+    keep_from = len(messages) - keep_count
+
+    if keep_from > 0:
+        kept = len(messages) - keep_from
+        total_before = len(messages)
+        del messages[:keep_from]
+        print(f"  [truncated {total_before - kept} messages, kept {kept}]")
+
+
+# ── Single-tool step ────────────────────────────────────────────────
+
+
+def _step(
+    llm: BaseChatModel,
+    tools: list[BaseTool],
+    tool_map: dict[str, BaseTool],
+    system_prompt: str,
+    messages: list,
+    max_history_tokens: int,
+) -> StepSnapshot:
+    """One LLM invocation → at most one tool call → result appended.
+
+    Returns a StepSnapshot describing what happened.
+    """
+    _truncate_messages(messages, max_history_tokens)
+
+    # Build the full message list: system prompt + conversation history.
+    llm_input = [SystemMessage(content=system_prompt)] + messages
+    history_tokens = sum(_estimate_message_tokens(m) for m in messages)
+    prompt_tokens = _estimate_message_tokens(llm_input[0])
+    print(
+        f"  [context: ~{prompt_tokens + history_tokens} tokens (prompt {prompt_tokens} + history {history_tokens})]"
+    )
+
+    # Bind tools so the LLM knows what's available.
+    response: AIMessage = llm.bind_tools(tools).invoke(llm_input)
+    messages.append(response)
+
+    if response.content:
+        print(f"  Agent: {response.content}")
+
+    if not response.tool_calls:
+        return StepSnapshot()
+
+    # Execute all tool calls. Parallel tool calls should be disabled at the
+    # LLM level (e.g. parallel_tool_calls=False) so models naturally send one,
+    # but if multiple arrive we execute them all rather than silently dropping.
+    last_action = None
+    last_args: dict[str, Any] = {}
+    last_result = None
+    for tc in response.tool_calls:
+        tool_name = tc["name"]
+        tool_args = tc["args"]
+        print(f"  -> {tool_name}({tool_args})")
+
+        tool = tool_map.get(tool_name)
+        if tool is None:
+            result_str = f"Unknown tool: {tool_name}"
+        else:
+            result_str = str(tool.invoke(tool_args))
+
+        print(f"  <- {tool_name}: {result_str}")
+        messages.append(ToolMessage(content=result_str, tool_call_id=tc["id"]))
+        last_action = tool_name
+        last_args = tool_args
+        last_result = result_str
+
+    return StepSnapshot(action=last_action, args=last_args, result=last_result)
+
+
+# ── Modes ───────────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
 class TickPerAction:
-    """Each action sees exactly ``ticks_per_action`` ticks of game progression.
-    Ticks advance in a background thread while the LLM thinks, hiding latency.
+    """Game advances a fixed number of ticks after each agent step.
     Deterministic — timing is independent of LLM speed."""
 
     ticks_per_action: int = 200
+    max_history_tokens: int = DEFAULT_MAX_HISTORY_TOKENS
 
     def __call__(
         self,
         game: RCT2,
-        agent_executor: CompiledStateGraph,
+        llm: BaseChatModel,
+        tools: list[BaseTool],
+        tool_map: dict[str, BaseTool],
+        system_prompt: str,
         messages: list,
-    ) -> Generator[RoundSnapshot]:
-        with ThreadPoolExecutor(max_workers=1) as tick_executor:
-            while True:
-                messages.clear()
-                tick_future: Future | None = tick_executor.submit(
-                    game.advance_ticks, self.ticks_per_action
-                )
-                action_count = 0
-
-                for msg in _stream_actions(agent_executor, messages):
-                    if msg.type == "ai" and msg.tool_calls:
-                        if tick_future is not None:
-                            tick_future.result()
-                            tick_future = None
-                        action_count += len(msg.tool_calls)
-                    elif msg.type == "tool":
-                        tick_future = tick_executor.submit(
-                            game.advance_ticks, self.ticks_per_action
-                        )
-
-                if tick_future is not None:
-                    tick_future.result()
-
-                yield RoundSnapshot(actions=action_count)
+    ) -> Generator[StepSnapshot]:
+        while True:
+            game.advance_ticks(self.ticks_per_action)
+            snapshot = _step(
+                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens
+            )
+            yield snapshot
 
 
 @dataclass(frozen=True)
 class PauseAndAct:
-    """Game is paused while the agent acts. After ``actions_per_turn`` actions
-    (or when the LLM stops), the game advances ``ticks_per_turn`` ticks."""
+    """Agent takes up to ``actions_per_turn`` steps while paused,
+    then the game advances ``ticks_per_turn`` ticks."""
 
-    ticks_per_turn: int = 1000
-    actions_per_turn: int = 20
+    ticks_per_turn: int = 2_500
+    actions_per_turn: int = 5
+    max_history_tokens: int = DEFAULT_MAX_HISTORY_TOKENS
 
     def __call__(
         self,
         game: RCT2,
-        agent_executor: CompiledStateGraph,
+        llm: BaseChatModel,
+        tools: list[BaseTool],
+        tool_map: dict[str, BaseTool],
+        system_prompt: str,
         messages: list,
-    ) -> Generator[RoundSnapshot]:
+    ) -> Generator[StepSnapshot]:
         while True:
-            messages.clear()
-            action_count = 0
-
-            for msg in _stream_actions(agent_executor, messages):
-                if msg.type == "ai" and msg.tool_calls:
-                    action_count += len(msg.tool_calls)
-                    if action_count >= self.actions_per_turn:
-                        break
-
+            for _ in range(self.actions_per_turn):
+                snapshot = _step(
+                    llm,
+                    tools,
+                    tool_map,
+                    system_prompt,
+                    messages,
+                    self.max_history_tokens,
+                )
+                yield snapshot
+                if snapshot.action is None:
+                    break  # LLM chose to stop acting
             game.advance_ticks(self.ticks_per_turn)
-            yield RoundSnapshot(actions=action_count)
 
 
 @dataclass(frozen=True)
 class RealTime:
     """Game runs continuously — never pauses. Non-deterministic: LLM latency
-    means variable game time passes between actions."""
+    means variable game time passes between steps."""
+
+    max_history_tokens: int = DEFAULT_MAX_HISTORY_TOKENS
 
     def __call__(
         self,
         game: RCT2,
-        agent_executor: CompiledStateGraph,
+        llm: BaseChatModel,
+        tools: list[BaseTool],
+        tool_map: dict[str, BaseTool],
+        system_prompt: str,
         messages: list,
-    ) -> Generator[RoundSnapshot]:
+    ) -> Generator[StepSnapshot]:
+        game.unpause()
         while True:
-            messages.clear()
-            game.unpause()
-            action_count = 0
-
-            for msg in _stream_actions(agent_executor, messages):
-                if msg.type == "ai" and msg.tool_calls:
-                    action_count += len(msg.tool_calls)
-
-            game.pause()
-            yield RoundSnapshot(actions=action_count)
+            snapshot = _step(
+                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens
+            )
+            yield snapshot
 
 
 Mode = TickPerAction | PauseAndAct | RealTime

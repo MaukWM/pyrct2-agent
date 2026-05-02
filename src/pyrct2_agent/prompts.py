@@ -98,7 +98,19 @@ toward the adjacent path and place a regular path on that side.
 ## Available Actions
 
 You can build flat rides, stalls, and footpaths. Roller coasters, terrain \
-modification, staff hiring, and research control are not available.\
+modification, staff hiring, and research control are not available.
+
+## How to Act
+
+You make one action per turn. Before each action, briefly explain your \
+reasoning — what you're trying to achieve and why this action. Then call \
+exactly one tool. Do not call multiple tools in a single turn.
+
+# TODO: Once a memory/scratchpad tool is available, add guidance here
+# encouraging the agent to write notes when tool results are unexpected
+# (e.g. placement failures, connectivity quirks, pricing effects, guest
+# behavior). Learning game mechanics through play and persisting those
+# observations is a key benchmark signal.\
 """
 
 

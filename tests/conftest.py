@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from contextlib import contextmanager
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 from pyrct2.client import RCT2
 from pyrct2.scenarios import Scenario
+
+from pyrct2_agent.modes import StepSnapshot
 
 
 # ---------------------------------------------------------------------------
@@ -31,32 +33,6 @@ def game_with_guests():
 
 
 # ---------------------------------------------------------------------------
-# Fake messages — minimal objects matching what _stream_actions yields
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class Msg:
-    """Minimal message matching what _stream_actions yields."""
-
-    type: str
-    content: str = ""
-    tool_calls: list[dict[str, Any]] = field(default_factory=list)
-    name: str = ""
-
-
-def ai(content: str = "", tool_calls: int = 0) -> Msg:
-    """Fake AI message, optionally with N tool calls."""
-    calls = [{"name": f"tool_{i}", "args": {}} for i in range(tool_calls)]
-    return Msg(type="ai", content=content, tool_calls=calls)
-
-
-def tool(name: str = "noop", content: str = "ok") -> Msg:
-    """Fake tool result message."""
-    return Msg(type="tool", content=content, name=name)
-
-
-# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -66,18 +42,25 @@ def get_ticks(game: RCT2) -> int:
     return game.get_status()["payload"]["date"]["engineTicks"]
 
 
-def patch_stream(turns: list[list[Msg]]):
-    """Patch _stream_actions to yield pre-scripted turns.
+def step_snap(
+    action: str | None = None, args: dict[str, Any] | None = None
+) -> StepSnapshot:
+    """Create a StepSnapshot for testing."""
+    return StepSnapshot(action=action, args=args or {}, result="ok" if action else None)
 
-    Each call to _stream_actions pops one turn from the list.
-    When exhausted, yields an AI message with no tool calls.
+
+@contextmanager
+def patch_step(snapshots: list[StepSnapshot]):
+    """Patch _step to return pre-scripted StepSnapshots.
+
+    When the list is exhausted, returns no-action snapshots.
     """
-    turns = list(turns)
+    snapshots = list(snapshots)
 
-    def fake_stream(_executor, _messages):
-        if turns:
-            yield from turns.pop(0)
-        else:
-            yield ai("done")
+    def fake_step(_llm, _tools, _tool_map, _system_prompt, _messages, _max_tokens):
+        if snapshots:
+            return snapshots.pop(0)
+        return StepSnapshot()
 
-    return patch("pyrct2_agent.modes._stream_actions", side_effect=fake_stream)
+    with patch("pyrct2_agent.modes._step", side_effect=fake_step) as mock:
+        yield mock

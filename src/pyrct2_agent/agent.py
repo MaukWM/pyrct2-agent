@@ -7,7 +7,6 @@ import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from langchain.agents import create_agent
 from pyrct2._generated.enums import GameSpeed
 from pyrct2.client import RCT2
 from pyrct2.scenarios import Scenario
@@ -163,7 +162,7 @@ class Agent:
     def _game_loop(self, game: RCT2) -> RunResult:
         prompt = build_system_prompt(self.mode, self.system_prompt)
         tools = self._resolve_tools(game)
-        agent_executor = create_agent(self.llm, tools, system_prompt=prompt)
+        tool_map = {t.name: t for t in tools}
         messages: list = []
 
         start_time = time.monotonic()
@@ -171,11 +170,16 @@ class Agent:
         total_actions = 0
         total_ticks = 0
 
-        for i, snapshot in enumerate(self.mode(game, agent_executor, messages), 1):
-            total_actions += snapshot.actions
+        for i, snapshot in enumerate(
+            self.mode(game, self.llm, tools, tool_map, prompt, messages), 1
+        ):
+            if snapshot.action is not None:
+                total_actions += 1
             total_ticks = game.get_status().get("scenarioTicks", total_ticks)
 
-            print(f"\n--- Snapshot {i} | Guests {game.park.guests.count()} ---")
+            print(
+                f"\n--- Step {i} | Actions {total_actions} | Guests {game.park.guests.count()} ---"
+            )
 
             if self.max_actions and total_actions >= self.max_actions:
                 outcome = Outcome.MAX_ACTIONS
