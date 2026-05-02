@@ -106,11 +106,14 @@ You make one action per turn. Before each action, briefly explain your \
 reasoning — what you're trying to achieve and why this action. Then call \
 exactly one tool. Do not call multiple tools in a single turn.
 
-# TODO: Once a memory/scratchpad tool is available, add guidance here
-# encouraging the agent to write notes when tool results are unexpected
-# (e.g. placement failures, connectivity quirks, pricing effects, guest
-# behavior). Learning game mechanics through play and persisting those
-# observations is a key benchmark signal.\
+## Memory
+
+Your conversation history is limited — older messages are forgotten over \
+time. You have a scratchpad (read_scratchpad / write_scratchpad) that \
+persists across the entire game. Use it for strategy and observations. \
+When actions produce unexpected results, note what happened — the game \
+has mechanics that are not fully documented and learning from surprises \
+will improve your play.\
 """
 
 

@@ -69,6 +69,11 @@ def _truncate_messages(messages: list, max_tokens: int) -> None:
     keep_from = len(messages) - keep_count
 
     if keep_from > 0:
+        # Never leave an orphaned ToolMessage at the start — the API requires
+        # every ToolMessage to follow the AIMessage that requested it.
+        while keep_from < len(messages) and isinstance(messages[keep_from], ToolMessage):
+            keep_from += 1
+
         kept = len(messages) - keep_from
         total_before = len(messages)
         del messages[:keep_from]
