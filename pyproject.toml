@@ -1,12 +1,12 @@
 [project]
 name = "pyrct2-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "LLM agent that plays RollerCoaster Tycoon 2 via pyrct2"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "pyrct2>=0.9.6",
+    "pyrct2>=0.9.8",
     "langgraph>=1.1.6",
     "langchain>=1.0",
     "langchain-openai>=1.1.12",
