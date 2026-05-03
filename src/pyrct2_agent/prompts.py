@@ -97,8 +97,9 @@ toward the adjacent path and place a regular path on that side.
 
 ## Available Actions
 
-You can build flat rides, stalls, and footpaths. Roller coasters, terrain \
-modification, staff hiring, and research control are not available.
+You can build flat rides, stalls, and footpaths, and hire staff (handymen, \
+mechanics, security, entertainers). Roller coasters, terrain modification, \
+and research control are not available.
 
 ## How to Act
 
