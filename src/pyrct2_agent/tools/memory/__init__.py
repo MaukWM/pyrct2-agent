@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from langchain_core.tools import BaseTool
 
-from pyrct2_agent.tools.memory._scratchpad import Scratchpad, make_tools as _scratchpad_tools
+from pyrct2_agent.tools.memory._scratchpad import (
+    Scratchpad,
+    make_tools as _scratchpad_tools,
+)
 
 
 def make_memory_tools() -> list[BaseTool]:

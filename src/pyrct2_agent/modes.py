@@ -74,7 +74,9 @@ def _truncate_messages(messages: list, max_tokens: int) -> None:
     if keep_from > 0:
         # Never leave an orphaned ToolMessage at the start — the API requires
         # every ToolMessage to follow the AIMessage that requested it.
-        while keep_from < len(messages) and isinstance(messages[keep_from], ToolMessage):
+        while keep_from < len(messages) and isinstance(
+            messages[keep_from], ToolMessage
+        ):
             keep_from += 1
 
         kept = len(messages) - keep_from
@@ -218,7 +220,12 @@ class TickPerAction:
         while True:
             game.advance_ticks(self.ticks_per_action)
             snapshot = _step(
-                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens,
+                llm,
+                tools,
+                tool_map,
+                system_prompt,
+                messages,
+                self.max_history_tokens,
                 msg_tracker=tracker,
             )
             yield snapshot
@@ -280,7 +287,12 @@ class RealTime:
         game.unpause()
         while True:
             snapshot = _step(
-                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens,
+                llm,
+                tools,
+                tool_map,
+                system_prompt,
+                messages,
+                self.max_history_tokens,
                 msg_tracker=tracker,
             )
             yield snapshot
