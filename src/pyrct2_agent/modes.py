@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
     from langchain_core.tools import BaseTool
 
+# How many turns a park message stays visible to the agent.
+_MESSAGE_TTL: int = 4
+
 # Default context budget in estimated tokens.
 DEFAULT_MAX_HISTORY_TOKENS: int = 30_000
 
@@ -80,6 +83,39 @@ def _truncate_messages(messages: list, max_tokens: int) -> None:
         print(f"  [truncated {total_before - kept} messages, kept {kept}]")
 
 
+# ── Park message tracking ──────────────────────────────────────────
+
+
+class MessageTracker:
+    """Shows each park message for up to _MESSAGE_TTL turns, then drops it."""
+
+    def __init__(self, game: RCT2) -> None:
+        self._game = game
+        self._seen: set[tuple[str, int, int]] = set()
+        # key = (text, month, day), value = turns remaining
+        self._active: dict[tuple[str, int, int], int] = {}
+
+    def tick(self) -> list[str]:
+        """Advance one turn: ingest new messages, decrement TTLs, return visible texts."""
+        for m in self._game.state.park_messages():
+            key = (m.text, m.month, m.day)
+            if key not in self._seen:
+                self._seen.add(key)
+                self._active[key] = _MESSAGE_TTL
+
+        # Collect visible texts, then decrement. Remove expired.
+        visible = [text for (text, _, _), ttl in self._active.items() if ttl > 0]
+        expired = []
+        for key in self._active:
+            self._active[key] -= 1
+            if self._active[key] <= 0:
+                expired.append(key)
+        for key in expired:
+            del self._active[key]
+
+        return visible
+
+
 # ── Single-tool step ────────────────────────────────────────────────
 
 
@@ -90,6 +126,8 @@ def _step(
     system_prompt: str,
     messages: list,
     max_history_tokens: int,
+    *,
+    msg_tracker: MessageTracker | None = None,
 ) -> StepSnapshot:
     """One LLM invocation → at most one tool call → result appended.
 
@@ -99,6 +137,21 @@ def _step(
 
     # Build the full message list: system prompt + conversation history.
     llm_input = [SystemMessage(content=system_prompt)] + messages
+
+    # Append park notifications as the very last thing the LLM sees.
+    # These are ephemeral — not stored in conversation history.
+    # Each message appears for a few turns then fades out.
+    if msg_tracker is not None:
+        texts = msg_tracker.tick()
+        if texts:
+            note = (
+                "[Park notifications — recent game messages. "
+                "Each fades after a few turns. "
+                "Do not repeatedly react to the same message.]\n"
+                + "\n".join(f"- {t}" for t in texts)
+            )
+            llm_input.append(SystemMessage(content=note))
+            print(f"  [notifications: {len(texts)} park messages]")
     history_tokens = sum(_estimate_message_tokens(m) for m in messages)
     prompt_tokens = _estimate_message_tokens(llm_input[0])
     print(
@@ -161,10 +214,12 @@ class TickPerAction:
         system_prompt: str,
         messages: list,
     ) -> Generator[StepSnapshot]:
+        tracker = MessageTracker(game)
         while True:
             game.advance_ticks(self.ticks_per_action)
             snapshot = _step(
-                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens
+                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens,
+                msg_tracker=tracker,
             )
             yield snapshot
 
@@ -187,6 +242,7 @@ class PauseAndAct:
         system_prompt: str,
         messages: list,
     ) -> Generator[StepSnapshot]:
+        tracker = MessageTracker(game)
         while True:
             for _ in range(self.actions_per_turn):
                 snapshot = _step(
@@ -196,6 +252,7 @@ class PauseAndAct:
                     system_prompt,
                     messages,
                     self.max_history_tokens,
+                    msg_tracker=tracker,
                 )
                 yield snapshot
                 if snapshot.action is None:
@@ -219,10 +276,12 @@ class RealTime:
         system_prompt: str,
         messages: list,
     ) -> Generator[StepSnapshot]:
+        tracker = MessageTracker(game)
         game.unpause()
         while True:
             snapshot = _step(
-                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens
+                llm, tools, tool_map, system_prompt, messages, self.max_history_tokens,
+                msg_tracker=tracker,
             )
             yield snapshot
 
